@@ -1,0 +1,73 @@
+# --- Secrets & environment ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- uv ---
+.uv/
+
+# --- Project-specific data (never commit user data, keys, or generated artifacts) ---
+data/chroma_persist/
+data/users.db
+data/query_log.jsonl
+data/*.txt
+!data/.gitkeep
+
+# --- Testing & coverage ---
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- OS-specific ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs ---
+*.log
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Docker ---
+docker-compose.override.yml
+
+# --- Type checkers / linters cache ---
+.mypy_cache/
+.ruff_cache/
