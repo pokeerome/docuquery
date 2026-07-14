@@ -1,18 +1,17 @@
+import os
 import json
 from datetime import datetime, timezone
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain_chroma import Chroma
+from langchain_pinecone import PineconeVectorStore
 from dotenv import load_dotenv
 load_dotenv()
 
-
-
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-vector_store = Chroma(
-    collection_name="docuquery_test",
-    embedding_function=embeddings,
-    persist_directory="data/chroma_persist"
+vector_store = PineconeVectorStore(
+    index_name="docuquery",
+    embedding=embeddings,
+    pinecone_api_key=os.getenv("PINECONE_API_KEY")
 )
 
 llm = ChatOpenAI(model="gpt-4o-mini")
@@ -31,19 +30,23 @@ def log_query(question: str, chunks: list[str], answer: str):
         f.write(json.dumps(log_entry) + "\n")
 
 
-def answer_question(question: str, user_id: int):
-    results = vector_store.similarity_search(question, k=5, filter={"user_id": user_id})
+def answer_question(question: str, user_id: int) -> str:
+    results = vector_store.similarity_search(
+        question,
+        k=5,
+        filter={"user_id": user_id}
+    )
     chunk_texts = [doc.page_content for doc in results]
     context = "\n\n".join(chunk_texts)
 
     prompt = f"""Answer the question using ONLY the context below. If the answer isn't in the context, say you don't know.
 
-    Context:
-    {context}
+Context:
+{context}
 
-    Question: {question}
+Question: {question}
 
-    Answer:"""
+Answer:"""
 
     response = llm.invoke(prompt)
     answer = response.content

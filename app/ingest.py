@@ -1,6 +1,7 @@
+import os
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
+from langchain_pinecone import PineconeVectorStore
 from langchain_core.documents import Document
 from dotenv import load_dotenv
 load_dotenv()
@@ -20,10 +21,10 @@ chunks = text_splitter.split_text(content)
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-vector_store = Chroma(
-    collection_name="docuquery_test",
-    embedding_function=embeddings,
-    persist_directory="data/chroma_persist"
+vector_store = PineconeVectorStore(
+    index_name="docuquery",
+    embedding=embeddings,
+    pinecone_api_key=os.getenv("PINECONE_API_KEY")
 )
 
 docs = [
@@ -33,4 +34,4 @@ docs = [
 
 vector_store.add_documents(docs)
 
-print(f"Ingested {len(chunks)} chunks into ChromaDB for user_id={USER_ID}.")
+print(f"Ingested {len(chunks)} chunks into Pinecone for user_id={USER_ID}.")
