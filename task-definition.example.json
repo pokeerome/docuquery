@@ -4,11 +4,11 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::758002376260:role/docuquery-ecs-execution-role",
+  "executionRoleArn": "arn:aws:iam::<YOUR_AWS_ACCOUNT_ID>:role/docuquery-ecs-execution-role",
   "containerDefinitions": [
     {
       "name": "docuquery",
-      "image": "758002376260.dkr.ecr.us-east-1.amazonaws.com/docuquery:latest",
+      "image": "<YOUR_AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/docuquery:latest",
       "portMappings": [
         {
           "containerPort": 8000,
@@ -18,15 +18,15 @@
       "secrets": [
         {
           "name": "OPENAI_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:758002376260:secret:docuquery/OPENAI_API_KEY-NLAmM7"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:<YOUR_AWS_ACCOUNT_ID>:secret:docuquery/OPENAI_API_KEY-NLAmM7"
         },
         {
           "name": "SECRET_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:758002376260:secret:docuquery/SECRET_KEY-QM0Ywa"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:<YOUR_AWS_ACCOUNT_ID>:secret:docuquery/SECRET_KEY-QM0Ywa"
         },
         {
           "name": "PINECONE_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:758002376260:secret:docuquery/PINECONE_API_KEY-9FrqQL"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:<YOUR_AWS_ACCOUNT_ID>:secret:docuquery/PINECONE_API_KEY-9FrqQL"
         }
       ],
       "logConfiguration": {

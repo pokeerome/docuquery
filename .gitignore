@@ -71,3 +71,5 @@ docker-compose.override.yml
 # --- Type checkers / linters cache ---
 .mypy_cache/
 .ruff_cache/
+
+task-definition.json
