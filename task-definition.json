@@ -1,0 +1,43 @@
+{
+  "family": "docuquery-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::758002376260:role/docuquery-ecs-execution-role",
+  "containerDefinitions": [
+    {
+      "name": "docuquery",
+      "image": "758002376260.dkr.ecr.us-east-1.amazonaws.com/docuquery:latest",
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "OPENAI_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:758002376260:secret:docuquery/OPENAI_API_KEY-NLAmM7"
+        },
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:758002376260:secret:docuquery/SECRET_KEY-QM0Ywa"
+        },
+        {
+          "name": "PINECONE_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:758002376260:secret:docuquery/PINECONE_API_KEY-9FrqQL"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/docuquery",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs",
+          "awslogs-create-group": "true"
+        }
+      }
+    }
+  ]
+}
