@@ -30,7 +30,7 @@ def log_query(question: str, chunks: list[str], answer: str):
         f.write(json.dumps(log_entry) + "\n")
 
 
-def answer_question(question: str, user_id: int) -> str:
+def answer_question(question: str, user_id: int, return_context: bool = False):
     results = vector_store.similarity_search(
         question,
         k=5,
@@ -53,6 +53,8 @@ Answer:"""
 
     log_query(question, chunk_texts, answer)
 
+    if return_context:
+        return answer, chunk_texts
     return answer
 
 

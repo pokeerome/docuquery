@@ -1,8 +1,8 @@
 # DocuQuery — Multi-Tenant RAG API
 
-A production-oriented Retrieval-Augmented Generation (RAG) API built with FastAPI, LangChain, and Pinecone. Users authenticate, upload their own documents through an authenticated endpoint, and query them through natural language — with strict per-user data isolation enforced at the retrieval layer. Deployed on AWS ECS Fargate behind a CI/CD pipeline.
+A production-oriented Retrieval-Augmented Generation (RAG) API built with FastAPI, LangChain, and Pinecone. Users authenticate, upload their own documents through an authenticated endpoint, and query them through natural language — with strict per-user data isolation enforced at the retrieval layer, automated LLM-judged quality evaluation, and a full CI/CD pipeline deploying to AWS.
 
-> **Status:** Core build complete (Milestones 1–3 and 5). Live demo available — see [Live Demo](#live-demo) below. Automated evaluation harness (Milestone 4) is a planned next step — see [Roadmap](#roadmap).
+> **Status:** Complete (Milestones 1–5). Live demo available — see [Live Demo](#live-demo) below.
 
 ## Live Demo
 
@@ -35,7 +35,7 @@ curl -X POST http://100.25.197.136:8000/query \
 
 ## Why This Project Exists
 
-Most RAG demos are single-user, single-session toys — call an LLM API, retrieve some chunks, done. This project goes further: it answers the question *"can multiple users safely share one RAG service, self-serve their own documents, and run it as a real deployed system — not just a script on my laptop?"* — a set of constraints any production RAG system actually has to solve.
+Most RAG demos are single-user, single-session toys — call an LLM API, retrieve some chunks, done. This project goes further: it answers the question *"can multiple users safely share one RAG service, self-serve their own documents, run it as a real deployed system, and have automated proof the answers are actually good — not just a script on my laptop?"* — a set of constraints any production RAG system actually has to solve.
 
 ## Features
 
@@ -43,7 +43,8 @@ Most RAG demos are single-user, single-session toys — call an LLM API, retriev
 - **JWT-based authentication** — secure registration and login, with bcrypt password hashing and signed, expiring access tokens
 - **Self-serve document upload** — authenticated users upload their own `.txt` documents via `POST /documents/upload`; validated for type, size, and encoding before processing
 - **Multi-tenant data isolation** — every document chunk is tagged with the owning user's ID at ingestion time, and every query is filtered by that same ID at retrieval time. Verified with two-account isolation testing, in both directions, on both ChromaDB (initial) and Pinecone (current)
-- **Structured query logging** — every question, its retrieved context, and its answer are logged to a JSONL file, forming the foundation for future automated evaluation
+- **Automated LLM-judged evaluation** — a golden set of test questions (including deliberately unanswerable ones) is run through the live pipeline and scored on faithfulness, relevancy, and correct-refusal accuracy, with results logged for tracking over time
+- **Structured query logging** — every question, its retrieved context, and its answer are logged to a JSONL file
 - **Protected API endpoints** — routes require a valid bearer token; invalid, missing, or expired tokens are rejected before any business logic runs
 - **Containerized and cloud-deployed** — packaged with Docker, deployed on AWS ECS Fargate with Secrets Manager-backed configuration and CloudWatch logging
 - **Automated CI checks** — GitHub Actions verifies dependency installation and Docker build success on every push
@@ -51,10 +52,11 @@ Most RAG demos are single-user, single-session toys — call an LLM API, retriev
 ## Tech Stack
 
 - **Backend:** FastAPI
-- **AI/LLM:** OpenAI API (`gpt-4o-mini` for generation, `text-embedding-3-small` for embeddings), LangChain
+- **AI/LLM:** OpenAI API (`gpt-4o-mini` for generation and evaluation judging, `text-embedding-3-small` for embeddings), LangChain
 - **Vector Store:** Pinecone (managed, cloud-hosted, namespaced by user via metadata filtering)
 - **Auth:** JWT (PyJWT), Passlib + bcrypt for password hashing
 - **Database:** SQLite (user records)
+- **Evaluation:** Custom LLM-as-judge harness (see [Evaluation](#evaluation) below)
 - **Package management:** uv
 - **Containerization:** Docker
 - **CI/CD:** GitHub Actions
@@ -97,6 +99,28 @@ AWS ECS Fargate service (pulls from ECR)
 ## How Data Isolation Is Enforced
 
 Every chunk stored in Pinecone carries a `user_id` field in its metadata, set at ingestion time. Every retrieval call passes a `filter={"user_id": current_user_id}` argument to Pinecone's similarity search — meaning a user's query vector is only ever compared against chunks they own. This was verified with two independent test accounts on both the original ChromaDB implementation and again after migrating to Pinecone: each user correctly answered questions about their own uploaded document, and correctly received "I don't know" when asked about the other user's document — in both directions, on both backends.
+
+## Evaluation
+
+Rather than relying on manual spot-checks, answer quality is measured automatically against a golden set of test questions (`app/eval/golden_set.py`), including deliberately unanswerable questions to test for hallucination resistance.
+
+Two evaluation runners exist:
+
+- **`app/eval/run_eval.py`** — a fast, simple keyword-based check: does the answer contain the expected key terms?
+- **`app/eval/run_llm_eval.py`** — a custom LLM-as-judge harness. For each question, a second LLM call scores the generated answer on:
+  - **Faithfulness** — is the answer fully supported by the retrieved context, with nothing invented?
+  - **Relevancy** — does the answer actually address the question? (measured only on genuinely answerable questions — see note below)
+  - **Refusal accuracy** — on deliberately unanswerable questions, did the system correctly decline to answer rather than hallucinate?
+
+**A note on metric design:** an early version of this harness averaged relevancy across *all* questions, including the deliberately unanswerable ones — which produced a misleadingly low score, since a correct "I don't know" is *not* a relevant answer to an out-of-scope question by definition, even though it's the *correct* response. The metric was redesigned to segment relevancy by whether a question should be answerable, and to measure unanswerable questions separately via refusal accuracy instead. This is the same "don't just report a number, understand why it is what it is" instinct behind the thesis-level error analysis this project's author has applied elsewhere — a naive average would have made a correctly-behaving system look worse than it is.
+
+Both runners log results to JSONL files (`data/eval_log.jsonl`, `data/llm_eval_log.jsonl`) for tracking quality over time.
+
+Run either with:
+```bash
+uv run python -m app.eval.run_eval
+uv run python -m app.eval.run_llm_eval
+```
 
 ## Setup (Local Development)
 
@@ -150,28 +174,34 @@ docker run -p 8000:8000 --env-file .env docuquery
 - [x] **Milestone 1** — Core RAG pipeline: ingestion, embedding, retrieval, generation, FastAPI endpoint, query logging
 - [x] **Milestone 2** — Authentication (JWT, bcrypt) and multi-tenant data isolation, verified with two-user testing
 - [x] **Milestone 3** — Migrated from local ChromaDB to Pinecone; isolation re-verified on the new backend
+- [x] **Milestone 4** — Automated evaluation harness: golden set (including unanswerable questions), custom LLM-as-judge scoring for faithfulness/relevancy/refusal accuracy
 - [x] **Milestone 5** — Dockerized, added CI/CD (GitHub Actions), deployed to AWS ECS Fargate; added authenticated self-serve document upload endpoint
-- [ ] **Milestone 4** — Automated evaluation harness (faithfulness, relevance, regression detection via Ragas or similar)
+
+**Future improvements (not currently planned as milestones, but identified gaps):**
 - [ ] Add a Load Balancer for a stable, non-changing public URL
-- [ ] Add automated test suite (pytest)
+- [ ] Add an automated test suite (pytest)
+- [ ] Support PDF/DOCX uploads, not just `.txt`
+- [ ] Add a document deletion endpoint
+- [ ] Wire evaluation runs into CI, so quality regressions are caught automatically on every push
 
 ## Known Limitations
 
 - **Unstable public IP** — the current deployment uses a single Fargate task without a load balancer; the public IP changes if the task restarts. A load balancer with a fixed DNS name would resolve this.
-- **No automated test suite yet** — all verification so far has been manual (curl-based end-to-end testing), though thorough (including two-account isolation testing on both vector store backends).
-- **No formal evaluation metrics yet** — query quality has been verified manually rather than via automated scoring (planned).
+- **No automated pytest suite yet** — all verification has been thorough but manual/scripted (curl-based end-to-end testing, custom evaluation runners), rather than a formal pytest suite.
 - **Text files only** — `/documents/upload` currently accepts `.txt` files only; no PDF/DOCX support yet.
 - **No document deletion** — uploaded documents accumulate in Pinecone; there's currently no endpoint to remove a previously uploaded document.
+- **Evaluation is manually triggered** — the evaluation harness exists and works but isn't yet wired into CI to run automatically on every push.
 
 ## What I'd Do Differently at Scale
 
-At higher scale, I'd move from filtering a shared Pinecone index by `user_id` metadata to fully namespaced storage per tenant (Pinecone supports this natively), add rate limiting per user to control LLM API cost exposure, move query logging from a flat JSONL file to a proper time-series-queryable store for real monitoring, and put the ECS service behind an Application Load Balancer for both a stable URL and the ability to scale beyond a single task.
+At higher scale, I'd move from filtering a shared Pinecone index by `user_id` metadata to fully namespaced storage per tenant (Pinecone supports this natively), add rate limiting per user to control LLM API cost exposure, move query logging from a flat JSONL file to a proper time-series-queryable store for real monitoring, put the ECS service behind an Application Load Balancer for both a stable URL and the ability to scale beyond a single task, and wire the evaluation harness into CI with a defined regression threshold (e.g., fail the build if faithfulness drops below 0.9) rather than running it manually.
 
 ## Debugging Journal (Selected Issues Encountered)
 
-Documenting real issues hit during development, since debugging production systems is as much a part of building them as writing the initial code:
+Documenting real issues hit during development, since debugging production systems — and knowing when to work around a broken dependency rather than keep fighting it — is as much a part of building them as writing the initial code:
 
 - **SQLite silently creates empty databases.** `sqlite3.connect()` doesn't error if the target directory is missing in the way you'd expect — instead the app crashed with `unable to open database file` inside a fresh Docker container, because the `data/` directory didn't exist in the image. Fixed by explicitly creating the directory in the Dockerfile and calling `init_db()` on app startup via a lifespan handler.
 - **Local port conflicts caused a false-positive test result.** An old local `uvicorn` process left running on port 8000 caused test requests to silently hit the wrong server while debugging a seemingly-passing Docker container — the container was actually crashing the whole time. Resolved by explicitly checking `docker logs` for request activity rather than trusting curl output alone.
 - **IAM permissions for CloudWatch log group creation.** The default `AmazonECSTaskExecutionRolePolicy` doesn't include `logs:CreateLogGroup`, causing ECS tasks to fail on startup when using `awslogs-create-group: true`. Fixed by attaching `CloudWatchLogsFullAccess` to the task execution role.
 - **ECR authentication tokens expire.** `docker push` began failing with a `403 Forbidden` after a period of inactivity between sessions — ECR login tokens are short-lived and need to be refreshed via `aws ecr get-login-password` before pushing again.
+- **`ragas` had genuine, cascading upstream bugs.** While building the evaluation harness, the `ragas` library failed to import at all (`ModuleNotFoundError` for a `ChatVertexAI` path that had been removed from `langchain_community` in current versions — a confirmed bug in `ragas` itself, not a local misconfiguration). After patching the import and pinning dependency versions, a second, deeper bug surfaced inside `ragas`'s internal LLM-wrapper handling (`AttributeError: 'InstructorLLM' object has no attribute 'agenerate_prompt'`), which would have required debugging the library's own internals rather than application code. Rather than continuing to chase bugs inside a third-party dependency, the evaluation harness was rebuilt as a small, custom LLM-as-judge implementation — achieving the same faithfulness/relevancy scoring goal directly, with full understanding and control over the resulting code, and no dependency on an unstable library.

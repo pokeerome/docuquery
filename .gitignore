@@ -37,7 +37,7 @@ ENV/
 # --- Project-specific data (never commit user data, keys, or generated artifacts) ---
 data/chroma_persist/
 data/users.db
-data/query_log.jsonl
+data/*.jsonl
 data/*.txt
 !data/.gitkeep
 
