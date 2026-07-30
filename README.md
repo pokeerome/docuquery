@@ -10,22 +10,22 @@ The API is deployed on AWS ECS Fargate. Try it yourself:
 
 ```bash
 # 1. Register
-curl -X POST http://100.25.197.136:8000/auth/register \
+curl -X POST http://54.198.176.31:8000/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email": "you@example.com", "password": "yourpassword"}'
 
 # 2. Log in
-curl -X POST http://100.25.197.136:8000/auth/login \
+curl -X POST http://54.198.176.31:8000/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "you@example.com", "password": "yourpassword"}'
 
 # 3. Upload a document (use the access_token from step 2)
-curl -X POST http://100.25.197.136:8000/documents/upload \
+curl -X POST http://54.198.176.31:8000/documents/upload \
   -H "Authorization: Bearer <your_token>" \
   -F "file=@yourfile.txt"
 
 # 4. Ask a question about it
-curl -X POST http://100.25.197.136:8000/query \
+curl -X POST http://54.198.176.31:8000/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <your_token>" \
   -d '{"question": "your question here"}'
