@@ -3,6 +3,8 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+os.makedirs("data", exist_ok=True)
+
 os.environ["DB_FILE"] = "data/test_users.db"
 os.environ.setdefault("OPENAI_API_KEY", "test-dummy-key")
 os.environ.setdefault("SECRET_KEY", "test-dummy-secret")
