@@ -47,7 +47,8 @@ Most RAG demos are single-user, single-session toys — call an LLM API, retriev
 - **Structured query logging** — every question, its retrieved context, and its answer are logged to a JSONL file
 - **Protected API endpoints** — routes require a valid bearer token; invalid, missing, or expired tokens are rejected before any business logic runs
 - **Containerized and cloud-deployed** — packaged with Docker, deployed on AWS ECS Fargate with Secrets Manager-backed configuration and CloudWatch logging
-- **Automated CI checks** — GitHub Actions verifies dependency installation and Docker build success on every push
+- **Automated test suite** — a pytest suite covering authentication flows, token enforcement on protected endpoints, upload validation, and — most importantly — multi-tenant data isolation, fully mocked against external APIs (OpenAI, Pinecone) so it runs in seconds with no real API cost, wired into GitHub Actions CI
+- **Automated CI checks** — GitHub Actions verifies dependency installation, runs the full test suite, and confirms Docker build success on every push
 
 ## Tech Stack
 
@@ -57,6 +58,7 @@ Most RAG demos are single-user, single-session toys — call an LLM API, retriev
 - **Auth:** JWT (PyJWT), Passlib + bcrypt for password hashing
 - **Database:** SQLite (user records)
 - **Evaluation:** Custom LLM-as-judge harness (see [Evaluation](#evaluation) below)
+- **Testing:** pytest, with FastAPI's `TestClient` and mocked external dependencies (OpenAI, Pinecone)
 - **Package management:** uv
 - **Containerization:** Docker
 - **CI/CD:** GitHub Actions
@@ -121,6 +123,23 @@ Run either with:
 uv run python -m app.eval.run_eval
 uv run python -m app.eval.run_llm_eval
 ```
+
+## Testing
+
+A pytest suite (`tests/`) covers:
+- **Authentication** — registration, correct/incorrect login, rejection of nonexistent users
+- **Token enforcement** — protected endpoints (`/query`, `/documents/upload`) correctly reject missing or invalid tokens
+- **Multi-tenant isolation** — the highest-stakes correctness property in the system, now automated: two users are registered, each uploads distinct content, and the test confirms neither can ever retrieve the other's data
+- **Upload validation** — file type, size, and empty-content checks on `/documents/upload`
+
+External dependencies (OpenAI, Pinecone) are fully mocked, using a small in-memory fake vector store that genuinely applies the same `user_id` metadata filtering the real Pinecone integration does — so the isolation test proves the actual filtering logic works, not just that a mock returns pre-scripted data. This means the whole suite runs in seconds, costs nothing, and has no external dependency on real API availability.
+
+Run the suite:
+```bash
+uv run pytest tests/ -v
+```
+
+The suite runs automatically in CI on every push, before the Docker build step.
 
 ## Setup (Local Development)
 
