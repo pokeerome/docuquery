@@ -1,6 +1,7 @@
+import os
 import sqlite3
 
-DB_FILE = "data/users.db"
+DB_FILE = os.getenv("DB_FILE", "data/users.db")
 
 def get_connection():
     return sqlite3.connect(DB_FILE, check_same_thread=False)
