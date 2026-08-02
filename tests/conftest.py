@@ -4,8 +4,15 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 os.environ["DB_FILE"] = "data/test_users.db"
+os.environ.setdefault("OPENAI_API_KEY", "test-dummy-key")
+os.environ.setdefault("SECRET_KEY", "test-dummy-secret")
+os.environ.setdefault("PINECONE_API_KEY", "test-dummy-key")
 
 from unittest.mock import MagicMock
+
+import langchain_pinecone
+
+langchain_pinecone.PineconeVectorStore = MagicMock(return_value=MagicMock())
 
 import pytest
 
