@@ -24,6 +24,10 @@ jobs:
         run: uv sync --frozen
 
       - name: Run tests
+        env:
+          OPENAI_API_KEY: "test-dummy-key"
+          SECRET_KEY: "test-dummy-secret"
+          PINECONE_API_KEY: "test-dummy-key"
         run: uv run pytest tests/ -v
 
       - name: Build Docker image
