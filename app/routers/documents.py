@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+
 from app.auth import get_current_user
 from app.ingest import ingest_text
+from app.limiter import limiter
 
 router = APIRouter()
 
@@ -8,7 +10,9 @@ MAX_FILE_SIZE = 1_000_000
 
 
 @router.post("/documents/upload")
+@limiter.limit("10/minute")
 async def upload_document(
+    request: Request,
     file: UploadFile,
     current_user: dict = Depends(get_current_user)
 ):
