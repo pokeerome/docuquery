@@ -10,28 +10,28 @@ The API is deployed on AWS ECS Fargate. Try it yourself:
 
 ```bash
 # 1. Register
-curl -X POST http://54.198.176.31:8000/auth/register \
+curl -X POST http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email": "you@example.com", "password": "yourpassword"}'
 
 # 2. Log in
-curl -X POST http://54.198.176.31:8000/auth/login \
+curl -X POST http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "you@example.com", "password": "yourpassword"}'
 
 # 3. Upload a document (use the access_token from step 2)
-curl -X POST http://54.198.176.31:8000/documents/upload \
+curl -X POST http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/documents/upload \
   -H "Authorization: Bearer <your_token>" \
   -F "file=@yourfile.txt"
 
 # 4. Ask a question about it
-curl -X POST http://54.198.176.31:8000/query \
+curl -X POST http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <your_token>" \
   -d '{"question": "your question here"}'
 ```
 
-> **Note:** the demo IP is tied to a single ECS task without a load balancer, so it can change if the task restarts. See [Known Limitations](#known-limitations).
+> **Note:** this URL is served through an Application Load Balancer, so it stays stable even if the underlying ECS task restarts.
 
 ## Why This Project Exists
 
@@ -97,7 +97,7 @@ Local: docker build → docker push → Amazon ECR
 AWS ECS Fargate service (pulls from ECR)
    ├── reads secrets from AWS Secrets Manager (OpenAI, Pinecone, JWT keys)
    ├── logs to CloudWatch
-   └── publicly reachable via assigned public IP (VPC + Security Group, port 8000 open)
+   └── reachable via Application Load Balancer (stable DNS name) → task's private IP (VPC + Security Group, port 8000 open only to the ALB)
 ```
 
 ## How Data Isolation Is Enforced
@@ -199,14 +199,12 @@ docker run -p 8000:8000 --env-file .env docuquery
 - [x] **Milestone 5** — Dockerized, added CI/CD (GitHub Actions), deployed to AWS ECS Fargate; added authenticated self-serve document upload endpoint
 
 **Future improvements (not currently planned as milestones, but identified gaps):**
-- [ ] Add a Load Balancer for a stable, non-changing public URL
 - [ ] Support PDF/DOCX uploads, not just `.txt`
 - [ ] Add a document deletion endpoint
 - [ ] Wire evaluation runs into CI, so quality regressions are caught automatically on every push
 
 ## Known Limitations
 
-- **Unstable public IP** — the current deployment uses a single Fargate task without a load balancer; the public IP changes if the task restarts. A load balancer with a fixed DNS name would resolve this.
 - **Text files only** — `/documents/upload` currently accepts `.txt` files only; no PDF/DOCX support yet.
 - **No document deletion** — uploaded documents accumulate in Pinecone; there's currently no endpoint to remove a previously uploaded document.
 - **Evaluation is manually triggered** — the evaluation harness exists and works but isn't yet wired into CI to run automatically on every push.
@@ -214,7 +212,7 @@ docker run -p 8000:8000 --env-file .env docuquery
 
 ## What I'd Do Differently at Scale
 
-At higher scale, I'd move from filtering a shared Pinecone index by `user_id` metadata to fully namespaced storage per tenant (Pinecone supports this natively), move rate limiting from in-process (`slowapi`, which won't coordinate correctly across multiple horizontally-scaled ECS tasks) to a shared, distributed store like Redis, move query logging from a flat JSONL file to a proper time-series-queryable store for real monitoring, put the ECS service behind an Application Load Balancer for both a stable URL and the ability to scale beyond a single task, upgrade prompt injection detection beyond keyword matching toward a more robust classifier-based approach, and wire the evaluation harness into CI with a defined regression threshold (e.g., fail the build if faithfulness drops below 0.9) rather than running it manually.
+At higher scale, I'd move from filtering a shared Pinecone index by `user_id` metadata to fully namespaced storage per tenant (Pinecone supports this natively), move rate limiting from in-process (`slowapi`, which won't coordinate correctly across multiple horizontally-scaled ECS tasks) to a shared, distributed store like Redis, move query logging from a flat JSONL file to a proper time-series-queryable store for real monitoring, migrate off SQLite to unblock running more than one ECS task behind the load balancer already in place (currently `desiredCount: 1`, so the ALB provides a stable URL but not yet horizontal scaling), upgrade prompt injection detection beyond keyword matching toward a more robust classifier-based approach, and wire the evaluation harness into CI with a defined regression threshold (e.g., fail the build if faithfulness drops below 0.9) rather than running it manually.
 
 ## Debugging Journal (Selected Issues Encountered)
 
