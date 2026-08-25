@@ -8,28 +8,26 @@ A production-oriented Retrieval-Augmented Generation (RAG) API built with FastAP
 
 The API is deployed on AWS ECS Fargate. Try it yourself:
 
-```bash
+## Live Demo
+
+The API is deployed on AWS ECS Fargate. Try it yourself:
+
+```cmd
 # 1. Register
-curl -X POST http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email": "you@example.com", "password": "yourpassword"}'
+
+curl.exe -X POST "http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/auth/register" -H "Content-Type: application/json" -d "{\"email\":\"you@example.com\",\"password\":\"yourpassword\"}"
 
 # 2. Log in
-curl -X POST http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "you@example.com", "password": "yourpassword"}'
+
+curl.exe -X POST "http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/auth/login" -H "Content-Type: application/json" -d "{\"email\":\"you@example.com\",\"password\":\"yourpassword\"}"
 
 # 3. Upload a document (use the access_token from step 2)
-curl -X POST http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/documents/upload \
-  -H "Authorization: Bearer <your_token>" \
-  -F "file=@yourfile.txt"
+
+curl.exe -X POST "http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/documents/upload" -H "Authorization: Bearer <your_token>" -F "file=@yourfile.txt"
 
 # 4. Ask a question about it
-curl -X POST http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/query \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <your_token>" \
-  -d '{"question": "your question here"}'
-```
+
+curl.exe -X POST "http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/query" -H "Content-Type: application/json" -H "Authorization: Bearer <your_token>" -d "{\"question\":\"your question here\"}"
 
 > **Note:** this URL is served through an Application Load Balancer, so it stays stable even if the underlying ECS task restarts.
 
