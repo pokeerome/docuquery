@@ -28,6 +28,7 @@ curl.exe -X POST "http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/do
 # 4. Ask a question about it
 
 curl.exe -X POST "http://docuquery-alb-1962360824.us-east-1.elb.amazonaws.com/query" -H "Content-Type: application/json" -H "Authorization: Bearer <your_token>" -d "{\"question\":\"your question here\"}"
+```
 
 > **Note:** this URL is served through an Application Load Balancer, so it stays stable even if the underlying ECS task restarts.
 
